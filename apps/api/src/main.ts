@@ -34,11 +34,16 @@ async function bootstrap() {
   const loggerService = new Logger('Main');
   const appConfigService: AppConfigService = app.get(AppConfigService);
 
-   try {
-    await app.listen(appConfigService.app.port);
-    loggerService.log(`Application started on http://localhost:${appConfigService.app.port}/api`);
+  try {
+    const port = appConfigService.app.port;
+    await app.listen(port);
+    loggerService.log(`Application started on http://localhost:${port}/api`);
   } catch (error) {
-    loggerService.error('Failed to start application', error);
+    loggerService.error('Failed to start application', {
+      error: error instanceof Error ? error.message : 'Unknown error',
+      context: 'Application Bootstrap',
+      port: appConfigService.app.port
+    });
     process.exit(1);
   }
   const shutdown = async () => {
