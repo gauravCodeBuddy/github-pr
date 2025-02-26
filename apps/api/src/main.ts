@@ -36,9 +36,25 @@ async function bootstrap() {
 
   try {
     await app.listen(appConfigService.app.port);
-    loggerService.debug(`\n\n\nAPP started on http://localhost:${appConfigService.app.port}/api`);
+    loggerService.log(`Application started on http://localhost:${appConfigService.app.port}/api`);
+    
+    process.on('unhandledRejection', (reason, promise) => {
+      loggerService.error('Unhandled Rejection at:', promise, 'reason:', reason);
+      // Handle the error appropriately
+    });
+    const signals = ['SIGTERM', 'SIGINT'];
+    signals.forEach(signal => {
+      process.on(signal, async () => {
+        loggerService.log(`Received ${signal}, starting graceful shutdown`);
+        await app.close();
+        process.exit(0);
+      });
+    });
   } catch (error) {
-    loggerService.error('Failed to start application', error);
+    loggerService.error('Failed to start application', {
+      error: error.message,
+      stack: error.stack
+    });
     process.exit(1);
   }
 }
