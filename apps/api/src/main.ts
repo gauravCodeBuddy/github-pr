@@ -34,8 +34,12 @@ async function bootstrap() {
   const loggerService = new Logger('Main');
   const appConfigService: AppConfigService = app.get(AppConfigService);
 
-  await app.listen(appConfigService.app.port).then(() => {
+  try {
+    await app.listen(appConfigService.app.port);
     loggerService.debug(`\n\n\nAPP started on http://localhost:${appConfigService.app.port}/api`);
-  });
+  } catch (error) {
+    loggerService.error('Failed to start application', error);
+    process.exit(1);
+  }
 }
 bootstrap();
