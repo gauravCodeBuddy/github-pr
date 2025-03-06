@@ -1,0 +1,61 @@
+import { Logger } from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
+import { DocumentBuilder, SwaggerCustomOptions, SwaggerModule } from '@nestjs/swagger';
+import { AppModule } from './app.module';
+import { AppConfigService } from './app-config/app-config.service';
+
+async function bootstrap() {
+  BigInt.prototype['toJSON'] = function () {
+    return Number(this.toString());
+  };
+  const app = await NestFactory.create(AppModule);
+  app.enableShutdownHooks();
+
+  const config = new DocumentBuilder()
+    .setTitle('API')
+    .setDescription('')
+    .setVersion('1.0')
+    .addBearerAuth({
+      type: 'http',
+      scheme: 'bearer',
+      bearerFormat: 'Bearer',
+    })
+    .build();
+
+  const options: SwaggerCustomOptions = {
+    swaggerOptions: {
+      persistAuthorization: true,
+      docExpansion: 'none',
+    },
+  };
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api', app, document, options);
+
+  const loggerService = new Logger('Main');
+  const appConfigService: AppConfigService = app.get(AppConfigService);
+
+  try {
+    await app.listen(appConfigService.app.port);
+    loggerService.log(`Application started on http://localhost:${appConfigService.app.port}/api`);
+    
+    process.on('unhandledRejection', (reason, promise) => {
+      loggerService.error('Unhandled Rejection at:', promise, 'reason:', reason);
+      // Handle the error appropriately
+    });
+    const signals = ['SIGTERM', 'SIGINT'];
+    signals.forEach(signal => {
+      process.on(signal, async () => {
+        loggerService.log(`Received ${signal}, starting graceful shutdown`);
+        await app.close();
+        process.exit(0);
+      });
+    });
+  } catch (error) {
+    loggerService.error('Failed to start application', {
+      error: error.message,
+      stack: error.stack
+    });
+    process.exit(1);
+  }
+}
+bootstrap();
